@@ -88,7 +88,6 @@ module Mongoid #:nodoc:
       #
       # @since 2.0.0.rc.1
       def master
-#        Mongo::Connection.from_uri(uri(self), optional).tap do |conn|
         ConnectionProxy.from_uri(uri(self), optional).tap do |conn|
           conn.apply_saved_authentication
         end
@@ -105,7 +104,6 @@ module Mongoid #:nodoc:
       # @since 2.0.0.rc.1
       def slaves
         (self["slaves"] || []).map do |options|
-#          Mongo::Connection.from_uri(uri(options), optional(true)).tap do |conn|
           ConnectionProxy.from_uri(uri(options), optional(true)).tap do |conn|
             conn.apply_saved_authentication
           end

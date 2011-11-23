@@ -1,4 +1,5 @@
 require 'thread'
+require 'mongoid/collection_proxy'
 
 #
 # Proxy that enables runtime swapping of a MongoDB database, as it
@@ -8,8 +9,20 @@ require 'thread'
 # specific database.
 #
 class DatabaseProxy
+    #
+    # Semaphore for preventing badness when multithreading.
+    #
     @mutex = Mutex.new
+
+    #
+    # All connections that we know about, and then the databases tied to
+    # them get stored in here.
+    #
     @pool = Hash.new
+
+    #
+    # Temporary mappings when we switch databases.
+    #
     @mapping = Hash.new
 
     #
@@ -69,16 +82,34 @@ class DatabaseProxy
     #
     # Resets back to the default database connections.
     #
+    # FIXME: Thread.current[:mongo_database]
+    #
     def reset!
-        synchronize { mapping[@default] = pool[@default] }
+        synchronize do
+            pool = DatabaseProxy.pool[@connection]
+            mapping = DatabaseProxy.mapping[@connection]
+            mapping[@default] = pool[@default]
+        end
+    end
+
+    #
+    # Returns the raw Mongo::DB object.
+    #
+    def target
+        synchronize { DatabaseProxy.mapping[@connection][@default] }
+    end
+
+    #
+    # Create a proxied collection.
+    #
+    def create_collection(name, opts)
+        CollectionProxy.new(self, name, opts)
     end
 
     #
     # Proxy methods to the correct database.
     #
     def method_missing(*args, &block)
-        database = synchronize { 
-            DatabaseProxy.mapping[@connection][@default] }
-        database.send(*args, &block)
+        target.send(*args, &block)
     end
 end

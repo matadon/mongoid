@@ -28,7 +28,7 @@ module Mongoid #:nodoc:
           connection.apply_saved_authentication
         end
 
-        [ connection.db(database), nil ]
+        [ DatabaseProxy.new(connection, database), nil ]
       end
 
       # Do we need to authenticate against the database?

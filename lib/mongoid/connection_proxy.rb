@@ -1,4 +1,4 @@
-require 'mongoid/database_proxy.rb'
+require 'mongoid/database_proxy'
 
 #
 # Proxy that enables runtime swapping of the MongoDB connection. This is
@@ -28,9 +28,3 @@ class ConnectionProxy
         @connection.send(*args, &block)
     end
 end
-
-# establish a base connection to a DB
-# enable temporary overrides in a ThreadLocal
-# clear these at the end of the request.
-# some sort of connection pooling would be nice, so we don't need to
-# reconnect every time. We're only switching databases, not hosts.
