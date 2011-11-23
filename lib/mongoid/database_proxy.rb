@@ -21,25 +21,12 @@ class DatabaseProxy
     @pool = Hash.new
 
     #
-    # Temporary mappings when we switch databases.
-    #
-    @mapping = Hash.new
-
-    #
     # Accessor for class-level instance variable that holds all the
     # connection-database pairs that we know about, so that we can
     # switch all of them globally.
     #
     def DatabaseProxy.pool
         @pool
-    end
-
-    #
-    # Mapping of databases that have been 'reconnected' in a specific
-    # thread context.
-    #
-    def DatabaseProxy.mapping
-        @mapping
     end
 
     #
@@ -54,7 +41,7 @@ class DatabaseProxy
     #
     def initialize(connection, name)
         @connection = connection
-        switch(@default = name)
+        switch(name)
     end
 
     #
@@ -73,30 +60,25 @@ class DatabaseProxy
             pool = (DatabaseProxy.pool[@connection] ||= {})
             database = (pool[name] || (pool[name] = @connection.db(name)))
 
-            # Ensure that we've got a mappingping for other consumers.
-            mapping = (DatabaseProxy.mapping[@connection] ||= {})
-            mapping[@default] = database
+            # Set the default if we haven't, and away we go (for this
+            # thread only).
+            @default ||= database 
+            Thread.current[:mongo_database] = database
         end
     end
 
     #
     # Resets back to the default database connections.
     #
-    # FIXME: Thread.current[:mongo_database]
-    #
     def reset!
-        synchronize do
-            pool = DatabaseProxy.pool[@connection]
-            mapping = DatabaseProxy.mapping[@connection]
-            mapping[@default] = pool[@default]
-        end
+        synchronize { Thread.current[:mongo_database] = nil }
     end
 
     #
     # Returns the raw Mongo::DB object.
     #
     def target
-        synchronize { DatabaseProxy.mapping[@connection][@default] }
+        synchronize { Thread.current[:mongo_database] || @default }
     end
 
     #
